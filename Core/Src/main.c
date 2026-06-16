@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "i2c.h"
 #include "spi.h"
 #include "usart.h"
 #include "gpio.h"
@@ -31,6 +32,7 @@
 #include "task.h"
 #include "semphr.h"
 #include "RC522.h"
+#include "i2c_lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,13 +58,18 @@ TaskHandle_t handlePIR;
 TaskHandle_t handleRFID;
 TaskHandle_t handleRelay;
 TaskHandle_t handleLed;
+TaskHandle_t handleLCD;
 
 QueueHandle_t queueKeypad;
 QueueHandle_t queueRFID;
 QueueHandle_t queueLed;
+QueueHandle_t queueLCD;
 
 SemaphoreHandle_t xPIR_Semaphore;
 SemaphoreHandle_t xRelay_Semaphore;
+
+I2C_LCD_HandleTypeDef lcd1;
+I2C_LCD_HandleTypeDef lcd2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -89,7 +96,7 @@ void taskKeypad(void* pvParm){
     };
 
     
-    HAL_GPIO_WritePin(GPIOE, COL1_Pin | COL2_Pin | COL3_Pin | COL4_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOF, COL1_Pin | COL2_Pin | COL3_Pin | COL4_Pin, GPIO_PIN_SET);
 
     while(1)
     {
@@ -99,26 +106,25 @@ void taskKeypad(void* pvParm){
         
         for (int c = 0; c < 4; c++)
         {
-            HAL_GPIO_WritePin(GPIOE, COL1_Pin | COL2_Pin | COL3_Pin | COL4_Pin, GPIO_PIN_SET);
-            HAL_GPIO_WritePin(GPIOE, COL_PINS[c], GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOF, COL1_Pin | COL2_Pin | COL3_Pin | COL4_Pin, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOF, COL_PINS[c], GPIO_PIN_RESET);
 
-            
             vTaskDelay(pdMS_TO_TICKS(1)); 
 
             for (int r = 0; r < 4; r++)
             {
-                if (HAL_GPIO_ReadPin(GPIOE, ROW_PINS[r]) == GPIO_PIN_RESET)
+                if (HAL_GPIO_ReadPin(GPIOF, ROW_PINS[r]) == GPIO_PIN_RESET)
                 {
                     
                     vTaskDelay(pdMS_TO_TICKS(5));
-                    if (HAL_GPIO_ReadPin(GPIOE, ROW_PINS[r]) == GPIO_PIN_RESET)
+                    if (HAL_GPIO_ReadPin(GPIOF, ROW_PINS[r]) == GPIO_PIN_RESET)
                     {
                         mode = key_matrix_values[r][c];
                         printf("Key Pressed: %c\r\n", mode);
                         isKeyPressed = 1;
                         
-                        // 等�?��?�鍵?��???
-                        while(HAL_GPIO_ReadPin(GPIOE, ROW_PINS[r]) == GPIO_PIN_RESET)
+                      
+                        while(HAL_GPIO_ReadPin(GPIOF, ROW_PINS[r]) == GPIO_PIN_RESET)
                         {
                             vTaskDelay(pdMS_TO_TICKS(10)); 
                         }
@@ -129,7 +135,7 @@ void taskKeypad(void* pvParm){
             if (isKeyPressed) break;
         }
 
-        HAL_GPIO_WritePin(GPIOE, COL1_Pin | COL2_Pin | COL3_Pin | COL4_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOF, COL1_Pin | COL2_Pin | COL3_Pin | COL4_Pin, GPIO_PIN_RESET);
 
         if (isKeyPressed == 1) 
         {
@@ -200,9 +206,9 @@ void taskRelay(void* pvParm)
         if (xSemaphoreTake(xRelay_Semaphore, portMAX_DELAY) == pdTRUE)
         {
             printf("Relay Activated\r\n");
-            HAL_GPIO_WritePin(GPIOD, RELAY, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_SET);
             vTaskDelay(pdMS_TO_TICKS(5000));
-            HAL_GPIO_WritePin(GPIOD, RELAY, GPIO_PIN_RESET);
+            HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_RESET);
             printf("Relay Deactivated\r\n");
         }
     }
@@ -212,7 +218,10 @@ void taskLed(void* pvParm)
 
   while(1)
   {
-     HAL_GPIO_WritePin(GPIOD, LED_R, GPIO_PIN_SET);
+     HAL_GPIO_WritePin(GPIOD, LED_R_Pin, GPIO_PIN_RESET);
+     HAL_GPIO_WritePin(GPIOD, LED_G_Pin, GPIO_PIN_RESET);
+     HAL_GPIO_WritePin(GPIOD, LED_B_Pin, GPIO_PIN_SET);
+    //  HAL_GPIO_WritePin(GPIOD, LED_R_Pin, GPIO_PIN_RESET);
       // char ledCommand;
       // if (xQueueReceive(queueLed, &ledCommand, portMAX_DELAY) == pdTRUE)
       // {
@@ -235,6 +244,40 @@ void taskLed(void* pvParm)
       vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
+void init_lcds(void) {
+    lcd1.hi2c = &hi2c1;     // hi2c1 is your I2C handler
+    lcd1.address = 0x4E;    // I2C address for the first LCD
+    lcd_init(&lcd1);        // Initialize the first LCD
+
+    lcd2.hi2c = &hi2c1;     // Use the same or different I2C handler
+    lcd2.address = 0x7E;    // I2C address for the second LCD
+    lcd_init(&lcd2);        // Initialize the second LCD
+}
+void taskLCD(void* pvParm)
+{
+    vTaskDelay(pdMS_TO_TICKS(100));
+    // 💡 在任務開頭進行 LCD 初始化，確保核心跑起來後才動硬體
+    lcd1.hi2c = &hi2c1;
+    lcd1.address = 0x4E; // 根據你 LCD 實際地址調整
+    lcd_init(&lcd1);
+    lcd_clear(&lcd1);
+    lcd_puts(&lcd1, "LCD 1 Ready");
+
+    printf("LCD Task Started\r\n");
+
+    while(1)
+    {
+        // 不要每一秒都瘋狂覆寫一模一樣的字，LCD 畫面會閃爍且霸佔 I2C
+        // 這裡做一次簡單的顯示測試
+        lcd_clear(&lcd1);
+        lcd_gotoxy(&lcd1, 0, 0);
+        lcd_puts(&lcd1, "System Running");
+        lcd_gotoxy(&lcd1, 0, 1);
+        lcd_puts(&lcd1, "LCD 1 Displaying");
+        // 讓出 CPU 執行權 5 秒
+        vTaskDelay(pdMS_TO_TICKS(5000)); 
+    }
+}
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == SR505_OUT_Pin) 
   {
@@ -244,25 +287,50 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
       
       portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
-  // uint8_t mode;
-  // uint8_t isKeyPressed = 0;
-  // BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-  // switch (GPIO_Pin) {
-  //   case GPIO_PIN_3: {  // sw1 PE3
-  //     if (HAL_GPIO_ReadPin(SW1_GPIO_Port, SW1_Pin) == 1) {
-  //       mode = 0;
-  //       isKeyPressed = 1;
-  //     }
-  //     break;
-  //   }
-  //   case GPIO_PIN_4: {  // sw2 PE4
-  //     if (HAL_GPIO_ReadPin(SW2_GPIO_Port, SW2_Pin) == 1) {
-  //       mode = 1;
-  //       isKeyPressed = 1;
-  //     }
-  //     break;
-  //   }
-  // }
+  
+  // 這裡的邏輯是：當 SW1 或 SW2 被按下時，讀取按鈕狀態並將對應的模式發送到 queueSwitch
+  uint8_t mode;
+  uint8_t isKeyPressed = 0;
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  switch (GPIO_Pin) {
+    case SW1_Pin: {  // sw1 PE3
+      if (HAL_GPIO_ReadPin(SW1_GPIO_Port, SW1_Pin) == 1) {
+        mode = 0;
+        isKeyPressed = 1;
+      }
+      break;
+    }
+    case SW2_Pin: {  // sw2 PE4
+      if (HAL_GPIO_ReadPin(SW2_GPIO_Port, SW2_Pin) == 1) {
+        mode = 1;
+        isKeyPressed = 1;
+      }
+      break;
+    }
+    case SW3_Pin: {  // sw3 PE5
+      if (HAL_GPIO_ReadPin(SW3_GPIO_Port, SW3_Pin) == 0) {
+        mode = 2;
+        isKeyPressed = 1;
+      }
+      break;
+    }
+    case SW4_Pin: {  // sw4 PE6
+      if (HAL_GPIO_ReadPin(SW4_GPIO_Port, SW4_Pin) == 0) {
+        mode = 3;
+        isKeyPressed = 1;
+      }
+      break;
+    }
+    default:{
+      break;
+    }
+      
+  }
+
+  if (isKeyPressed == 1) {
+    printf("Button Pressed: Mode %d\r\n", mode);
+  }
+  
 
   // if (isKeyPressed == 1) {
   //   xQueueSendFromISR(queueSwitch, &mode, &xHigherPriorityTaskWoken);
@@ -301,21 +369,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART3_UART_Init();
   MX_SPI1_Init();
+  MX_I2C1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
   queueKeypad = xQueueCreate(3, sizeof(char));
   queueLed = xQueueCreate(3, sizeof(char));
   queueRFID = xQueueCreate(10, sizeof(char));
+  queueLCD = xQueueCreate(10, sizeof(char));
 
   xPIR_Semaphore = xSemaphoreCreateBinary();
   xRelay_Semaphore = xSemaphoreCreateBinary();
   
-  MFRC522_Init(); 
-
-  xTaskCreate(taskKeypad, "Keypad", 128, NULL, 1, &handleKeypad);
-  xTaskCreate(taskPIR, "PIR", 128, NULL, 2, &handlePIR);
-  xTaskCreate(taskRFID, "RFID", 256, NULL, 3, &handleRFID);
-  xTaskCreate(taskRelay, "Relay", 16, NULL, 4, &handleRelay);
-  xTaskCreate(taskLed, "LED", 16, NULL, 5, &handleLed);
+  xTaskCreate(taskPIR,   "PIR",   256, NULL, 4, &handlePIR);   
+  xTaskCreate(taskRFID,  "RFID",  256, NULL, 3, &handleRFID);  
+  xTaskCreate(taskKeypad,"Keypad",256, NULL, 2, &handleKeypad);
+  xTaskCreate(taskRelay, "Relay", 128, NULL, 2, &handleRelay); 
+  xTaskCreate(taskLed,   "LED",   128, NULL, 1, &handleLed);   
+  xTaskCreate(taskLCD,   "LCD",   256, NULL, 1, &handleLCD);   
 
   vTaskStartScheduler();
   /* USER CODE END 2 */
