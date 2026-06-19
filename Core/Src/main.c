@@ -37,6 +37,9 @@
 #include "message.pb.h"
 #include "queue.h"
 #include "pb_decode.h"
+
+// 定義串列埠傳輸的最大緩衝區大小 (根據最長的 Protobuf 封包決定)
+#define PROTO_BUFFER_SIZE 128
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,9 +74,17 @@ QueueHandle_t queueKeypad;
 QueueHandle_t queueRFID;
 QueueHandle_t queueLed;
 QueueHandle_t queueLCD;
-QueueHandle_t pb_tx_queue = NULL;
 
-extern UART_HandleTypeDef huart2;
+// FreeRTOS 佇列控制塊，用於將要傳送的訊息交給 Tx Task
+osMessageQId smartLockTxQueueHandle;
+extern UART_HandleTypeDef huart2; 
+
+// 接收快取與旗標 (若使用 UART+DMA 接收)
+uint8_t rx_buffer[PROTO_BUFFER_SIZE];
+volatile uint16_t rx_len = 0;
+volatile uint8_t rx_flag = 0;
+
+
 
 typedef enum {
     RX_STATE_WAIT_HEADER1,
@@ -266,30 +277,27 @@ void taskLed(void* pvParm)
 
   while(1)
   {
-     HAL_GPIO_WritePin(GPIOD, LED_R_Pin, GPIO_PIN_RESET);
-     HAL_GPIO_WritePin(GPIOD, LED_G_Pin, GPIO_PIN_RESET);
-     HAL_GPIO_WritePin(GPIOD, LED_B_Pin, GPIO_PIN_SET);
-    //  HAL_GPIO_WritePin(GPIOD, LED_R_Pin, GPIO_PIN_RESET);
-      // char ledCommand;
-      // if (xQueueReceive(queueLed, &ledCommand, portMAX_DELAY) == pdTRUE)
-      // {
-          // Switch (ledCommand) {
-          //     case 'R':
-          //         HAL_GPIO_WritePin(GPIOD, LED_R, GPIO_PIN_SET);
-        
-          //         break;
-          //     case 'G':
-          //         HAL_GPIO_WritePin(GPIOD, LED_G, GPIO_PIN_SET);
-        
-          //         break;
-          //     case 'B':
-          //         HAL_GPIO_WritePin(GPIOD, LED_B, GPIO_PIN_SET);
-          //         break;           
-          //     default:
-                  
-          // }
-      // }
-      vTaskDelay(pdMS_TO_TICKS(1000));
+    char ledCommand;
+    if (xQueueReceive(queueLed, &ledCommand, portMAX_DELAY) == pdTRUE)
+    {
+      HAL_GPIO_WritePin(GPIOD, LED_B_Pin | LED_G_Pin | LED_R_Pin, GPIO_PIN_SET);
+      switch (ledCommand) {
+          case 'R':
+              HAL_GPIO_WritePin(GPIOD, LED_R_Pin, GPIO_PIN_RESET);
+              break;
+          case 'G':
+              HAL_GPIO_WritePin(GPIOD, LED_G_Pin, GPIO_PIN_RESET);
+    
+              break;
+          case 'Y':
+              HAL_GPIO_WritePin(GPIOD, LED_R_Pin, GPIO_PIN_RESET);
+              HAL_GPIO_WritePin(GPIOD, LED_G_Pin, GPIO_PIN_RESET);
+              break;           
+          default:
+              break;
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }
 void init_lcds(void) {
@@ -329,17 +337,127 @@ void taskLCD(void* pvParm)
         vTaskDelay(pdMS_TO_TICKS(10));
       }
 }
+// 初始化 Queue (在 main 中呼叫)
+void InitSmartLockComms(void) {
+  osMessageQueueId_t smartLockTxQueueHandle;
+
+  // 請把這行放進你的 Queue 初始化函式中（例如 main 裡的 MX_FREERTOS_Init）
+  smartLockTxQueueHandle = osMessageQueueNew(8, sizeof(access_control_SmartLockPacket*), NULL);
+    
+    // 啟動 UART 接收中斷 (建議使用 IDLE 中斷 + DMA 接收不定長度資料)
+    // HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_buffer, PROTO_BUFFER_SIZE);
+}
 
 void StartTask_Tx(void *argument)
 {
-    while(1){
-      vTaskDelay(pdMS_TO_TICKS(1000));
+   access_control_SmartLockPacket tx_packet;
+    uint8_t encode_buffer[PROTO_BUFFER_SIZE];
+    
+    for(;;) {
+        
+        access_control_SmartLockPacket* p_packet;
+        osStatus_t status = osMessageQueueGet(smartLockTxQueueHandle, &p_packet, NULL, osWaitForever);
+        if (status == osOK) {
+            // 取得佇列中的資料結構體
+            tx_packet = *(access_control_SmartLockPacket*)argument; 
+            
+            // 建立 Nanopb 輸出流
+            pb_ostream_t stream = pb_ostream_from_buffer(encode_buffer, sizeof(encode_buffer));
+            
+            // 開始序列化
+            bool status = pb_encode(&stream, access_control_SmartLockPacket_fields, &tx_packet);
+            
+            if (status) {
+                size_t bytes_written = stream.bytes_written;
+                
+                // 透過 UART 發送二進位資料給樹莓派
+                // 注意：實務上建議加上「封包長度標頭」或「CRC」，方便樹莓派切分粘包
+                HAL_UART_Transmit(&huart2, encode_buffer, bytes_written, HAL_MAX_DELAY);
+            } else {
+                // 序列化失敗處理 (例如欄位長度溢位)
+                // printf("Encoding failed: %s\n", PB_GET_ERROR(&stream));
+            }
+        }
     }
+}
+
+// 方便其他模組呼叫的 API：例如傳送密碼輸入事件
+void SendPasswordEvent(const char* pwd) {
+    access_control_SmartLockPacket packet = access_control_SmartLockPacket_init_default;
+    packet.sequence = 1; // 可以用全域變數累加
+    packet.which_packet_body = access_control_SmartLockPacket_stm32_message_tag;
+    
+    packet.packet_body.stm32_message.which_body = access_control_Stm32Message_password_input_tag;
+    strncpy(packet.packet_body.stm32_message.body.password_input.password, pwd, sizeof(packet.packet_body.stm32_message.body.password_input.password));
+    
+    // 寫入佇列 (不等待，若佇列滿了就放棄或回傳錯誤)
+    access_control_SmartLockPacket* p_packet = &packet;
+    osMessageQueuePut(smartLockTxQueueHandle, &p_packet, 0, 0);
 }
 void StartTask_Rx(void *argument)
 {
-    while(1){
-      vTaskDelay(pdMS_TO_TICKS(1000));
+    access_control_SmartLockPacket rx_packet;
+    
+    for(;;) {
+        // 這裡配合 UART 接收旗標，可以使用 FreeRTOS Task Notification 或 Semaphore 阻塞
+        // 假設收到資料後，中斷會釋放訊號或將 rx_flag 設為 1
+        if (rx_flag == 1) {
+            
+            // 建立 Nanopb 輸入流
+            pb_istream_t stream = pb_istream_from_buffer(rx_buffer, rx_len);
+            
+            // 清空接收結構體
+            memset(&rx_packet, 0, sizeof(rx_packet));
+            
+            // 開始解碼
+            bool status = pb_decode(&stream, access_control_SmartLockPacket_fields, &rx_packet);
+            
+            if (status) {
+                // 1. 檢查是否為給 PiMessage 包裹
+                if (rx_packet.which_packet_body == access_control_SmartLockPacket_pi_message_tag) {
+                    
+                    access_control_PiMessage *pi_msg = &rx_packet.packet_body.pi_message;
+                    
+                    // 2. 根據 oneof body 判斷樹莓派傳來的是什麼指令
+                    switch (pi_msg->which_body) {
+                        
+                        case access_control_PiMessage_unlock_tag:
+                            // 執行解鎖邏輯 (例如推動繼電器或伺服馬達)
+                            
+                            // 可以選擇回傳 CommandResponse 給樹莓派
+                            break;
+                            
+                        case access_control_PiMessage_control_rgb_led_tag:
+                            // 控制 RGB LED 燈號
+                           
+                            break;
+                            
+                        case access_control_PiMessage_action_response_tag:
+                            // 處理樹莓派對 STM32 之前請求的回應 (例如：人臉辨識結果)
+                            if(pi_msg->body.action_response.status == access_control_StatusType_STATUS_TYPE_OK) {
+                                // 驗證成功，點綠燈或播放提示音
+                            } else {
+                                // 驗證失敗處理
+                            }
+                            break;
+                            
+                        default:
+                            // 未知指令
+                            break;
+                    }
+                }
+            } else {
+                // 解碼失敗處理
+                // printf("Decoding failed: %s\n", PB_GET_ERROR(&stream));
+            }
+            
+            // 處理完畢，重置快取，重新開啟 UART 接收
+            rx_flag = 0;
+            rx_len = 0;
+            // HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_buffer, PROTO_BUFFER_SIZE);
+        }
+        
+        osDelay(10); // 小延遲防看門狗，若用 Semaphore 阻塞則不需此延遲
     }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -392,7 +510,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   }
 
   if (isKeyPressed == 1) {
-    printf("Button Pressed: Mode %d\r\n", mode);
+    
   }
   
 
@@ -437,11 +555,12 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  InitSmartLockComms(); // 初始化與樹莓派通訊的 Queue 和 UART 接收
+
   queueKeypad = xQueueCreate(3, sizeof(char));
   queueLed = xQueueCreate(3, sizeof(char));
   queueRFID = xQueueCreate(10, sizeof(char));
   queueLCD = xQueueCreate(10, sizeof(char[17]));
-  pb_tx_queue = xQueueCreate(5, sizeof(DoorLockMessage));
 
   xPIR_Semaphore = xSemaphoreCreateBinary();
   xRelay_Semaphore = xSemaphoreCreateBinary();

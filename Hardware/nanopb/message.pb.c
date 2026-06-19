@@ -6,4 +6,45 @@
 #error Regenerate this file with the current version of nanopb generator.
 #endif
 
+PB_BIND(access_control_SmartLockPacket, access_control_SmartLockPacket, AUTO)
+
+
+PB_BIND(access_control_Stm32Message, access_control_Stm32Message, AUTO)
+
+
+PB_BIND(access_control_PiMessage, access_control_PiMessage, AUTO)
+
+
+PB_BIND(access_control_PasswordInputEvent, access_control_PasswordInputEvent, AUTO)
+
+
+PB_BIND(access_control_RfidScannedEvent, access_control_RfidScannedEvent, AUTO)
+
+
+PB_BIND(access_control_IrTriggeredEvent, access_control_IrTriggeredEvent, AUTO)
+
+
+PB_BIND(access_control_FaceRegistrationEvent, access_control_FaceRegistrationEvent, AUTO)
+
+
+PB_BIND(access_control_RfidRegistrationEvent, access_control_RfidRegistrationEvent, AUTO)
+
+
+PB_BIND(access_control_SystemResetEvent, access_control_SystemResetEvent, AUTO)
+
+
+PB_BIND(access_control_UnlockCommand, access_control_UnlockCommand, AUTO)
+
+
+PB_BIND(access_control_ControlRgbLedCommand, access_control_ControlRgbLedCommand, AUTO)
+
+
+PB_BIND(access_control_ActionResponse, access_control_ActionResponse, AUTO)
+
+
+PB_BIND(access_control_CommandResponse, access_control_CommandResponse, AUTO)
+
+
+
+
 
