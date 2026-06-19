@@ -1,0 +1,3 @@
+access_control.PasswordInputEvent.password  max_size:16
+access_control.ActionResponse.message       max_size:32
+access_control.RfidScannedEvent.uid         max_size:10
