@@ -88,7 +88,12 @@ uint8_t rx_buffer[PROTO_BUFFER_SIZE];
 volatile uint16_t rx_len = 0;
 volatile uint8_t rx_flag = 0;
 
-
+typedef enum {
+    SIGNAL_IR_TRIGGERED,       // 紅外線觸發
+    SIGNAL_FACE_REGISTRATION,  // 人臉註冊
+    SIGNAL_RFID_REGISTRATION,  // RFID 註冊模式
+    SIGNAL_SYSTEM_RESET        // 系統重設
+} SmartLockSignal_t;
 
 typedef enum {
     RX_STATE_WAIT_HEADER1,
@@ -115,6 +120,114 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void StartTask_Tx(void *argument)
+{
+    // 將編碼快取移到 Task 內部作為局部變數（或全域靜態）
+    uint8_t encode_buffer[PROTO_BUFFER_SIZE];
+    
+    for(;;) {
+        access_control_SmartLockPacket* p_packet = NULL;
+        
+        // 從 Queue 中取得封包結構體的「指標」
+        osStatus_t status = osMessageQueueGet(smartLockTxQueueHandle, &p_packet, NULL, osWaitForever);
+        
+        // 確保指標不為空，且讀取成功
+        if (status == osOK && p_packet != NULL) {
+            
+            // 建立 Nanopb 輸出流
+            pb_ostream_t stream = pb_ostream_from_buffer(encode_buffer, sizeof(encode_buffer));
+            
+            // 修正：傳入解開指標後的實體結構體數據 (*p_packet)
+            bool encode_status = pb_encode(&stream, access_control_SmartLockPacket_fields, p_packet);
+            
+            if (encode_status) {
+                size_t bytes_written = stream.bytes_written;
+                // 透過 UART 發送給樹莓派
+                HAL_UART_Transmit(&huart2, encode_buffer, bytes_written, HAL_MAX_DELAY);
+            }
+            
+            // ⚠️ 重要：因為 Send 函式使用的是全域靜態或動態記憶體，
+            // 這裡不需要額外動作，但若是用動態配置則需在此釋放。
+        }
+    }
+}
+
+// 方便其他模組呼叫的 API：例如傳送密碼輸入事件
+void SendPasswordEvent(const char* pwd) {
+    static access_control_SmartLockPacket packet = access_control_SmartLockPacket_init_default;
+    packet.sequence = 1; // 可以用全域變數累加
+    packet.which_packet_body = access_control_SmartLockPacket_stm32_message_tag;
+    
+    packet.packet_body.stm32_message.which_body = access_control_Stm32Message_password_input_tag;
+    strncpy(packet.packet_body.stm32_message.body.password_input.password, pwd, sizeof(packet.packet_body.stm32_message.body.password_input.password));
+    
+    // 寫入佇列 (不等待，若佇列滿了就放棄或回傳錯誤)
+    access_control_SmartLockPacket* p_packet = &packet;
+    osMessageQueuePut(smartLockTxQueueHandle, &p_packet, 0, 0);
+}
+void SendRfidEvent(const uint8_t* uid_data, uint16_t uid_len) {
+    // 使用 static 確保函式結束後，這塊記憶體依然活著，直到 Tx Task 把他轉成二進位送出
+    static access_control_SmartLockPacket packet;
+    static uint32_t tx_sequence = 0;
+
+    // 初始化封包結構體
+    memset(&packet, 0, sizeof(packet));
+    packet.sequence = ++tx_sequence;
+    packet.which_packet_body = access_control_SmartLockPacket_stm32_message_tag;
+    
+    // 指定內部分支為 rfid_scanned
+    packet.packet_body.stm32_message.which_body = access_control_Stm32Message_rfid_scanned_tag;
+    
+    // 處理 Nanopb 的 bytes 型態賦值：必須給予長度(size)與資料(bytes)
+    // 限制最大長度防止超出 Nanopb 生成的陣列邊界 (一般 UID 最大為 10 位元組，安全起見限制一下)
+    uint16_t max_bytes_size = sizeof(packet.packet_body.stm32_message.body.rfid_scanned.uid.bytes);
+    if (uid_len > max_bytes_size) {
+        uid_len = max_bytes_size;
+    }
+    
+    packet.packet_body.stm32_message.body.rfid_scanned.uid.size = uid_len;
+    memcpy(packet.packet_body.stm32_message.body.rfid_scanned.uid.bytes, uid_data, uid_len);
+    
+    // 寫入佇列，將指標傳送給 Tx Task 處理
+    access_control_SmartLockPacket* p_packet = &packet;
+    osMessageQueuePut(smartLockTxQueueHandle, &p_packet, 0, 0);
+}
+void SendSmartLockSignal(SmartLockSignal_t signal) {
+    // 使用 static 確保記憶體在 Tx Task 序列化完成前一直有效
+    static access_control_SmartLockPacket packet;
+    static uint32_t tx_sequence = 0;
+
+    // 初始化與清空封包
+    memset(&packet, 0, sizeof(packet));
+    packet.sequence = ++tx_sequence;
+    packet.which_packet_body = access_control_SmartLockPacket_stm32_message_tag;
+    
+    // 核心邏輯：用 switch-case 根據傳入的 enum 決定 Nanopb 的 which_body 標籤
+    switch (signal) {
+        case SIGNAL_IR_TRIGGERED:
+            packet.packet_body.stm32_message.which_body = access_control_Stm32Message_ir_triggered_tag;
+            break;
+            
+        case SIGNAL_FACE_REGISTRATION:
+            packet.packet_body.stm32_message.which_body = access_control_Stm32Message_face_registration_tag;
+            break;
+            
+        case SIGNAL_RFID_REGISTRATION:
+            packet.packet_body.stm32_message.which_body = access_control_Stm32Message_rfid_registration_tag;
+            break;
+            
+        case SIGNAL_SYSTEM_RESET:
+            packet.packet_body.stm32_message.which_body = access_control_Stm32Message_system_reset_tag;
+            break;
+            
+        default:
+            return; // 未知訊號直接結束，不發送
+    }
+    
+    // 將打包好的結構體指標送進發送佇列
+    access_control_SmartLockPacket* p_packet = &packet;
+    osMessageQueuePut(smartLockTxQueueHandle, &p_packet, 0, 0);
+}
 void LcdDisplay(char line1[16], char line2[16]) {
     LcdDisplay_t displaytext;
 
@@ -187,9 +300,10 @@ void taskKeypad(void* pvParm){
               key_buffer[len-1] = '\0';
             }
           }
-          else if(mode == '#')
-            // XQueueSend(queueKeypad, &key_buffer, portMAX_DELAY);
+          else if(mode == '#'){
+            SendPasswordEvent(key_buffer);
             key_buffer[0] = '\0';
+					}
           else{
             if(len < 16){
               key_buffer[len] = mode;
@@ -211,7 +325,7 @@ void taskPIR(void* pvParm)
         
         if (xSemaphoreTake(xPIR_Semaphore, portMAX_DELAY) == pdTRUE)
         {
-            printf("Motion Detected\r\n");
+            SendSmartLockSignal(SIGNAL_IR_TRIGGERED);
             xSemaphoreTake(xPIR_Semaphore, 0);
             vTaskDelay(pdMS_TO_TICKS(2000));
         }
@@ -240,6 +354,9 @@ void taskRFID(void* pvParm)
       if (status == MI_OK)
       {
           printf("[RFID] UID: %02X:%02X:%02X:%02X\r\n", str[0], str[1], str[2], str[3]);
+					// 讓樹莓派判斷能不能開門
+					SendRfidEvent(str, 4);
+					LcdDisplay("RFID Scanned", "Verifying...");
       }
       
       //卡片睡眠，避免讀同一張卡
@@ -374,52 +491,6 @@ void InitSmartLockComms(void) {
     // HAL_UARTEx_ReceiveToIdle_DMA(&huart2, rx_buffer, PROTO_BUFFER_SIZE);
 }
 
-void StartTask_Tx(void *argument)
-{
-   access_control_SmartLockPacket tx_packet;
-    uint8_t encode_buffer[PROTO_BUFFER_SIZE];
-    
-    for(;;) {
-        
-        access_control_SmartLockPacket* p_packet;
-        osStatus_t status = osMessageQueueGet(smartLockTxQueueHandle, &p_packet, NULL, osWaitForever);
-        if (status == osOK) {
-            // 取得佇列中的資料結構體
-            tx_packet = *(access_control_SmartLockPacket*)argument; 
-            
-            // 建立 Nanopb 輸出流
-            pb_ostream_t stream = pb_ostream_from_buffer(encode_buffer, sizeof(encode_buffer));
-            
-            // 開始序列化
-            bool status = pb_encode(&stream, access_control_SmartLockPacket_fields, &tx_packet);
-            
-            if (status) {
-                size_t bytes_written = stream.bytes_written;
-                
-                // 透過 UART 發送二進位資料給樹莓派
-                // 注意：實務上建議加上「封包長度標頭」或「CRC」，方便樹莓派切分粘包
-                HAL_UART_Transmit(&huart2, encode_buffer, bytes_written, HAL_MAX_DELAY);
-            } else {
-                // 序列化失敗處理 (例如欄位長度溢位)
-                // printf("Encoding failed: %s\n", PB_GET_ERROR(&stream));
-            }
-        }
-    }
-}
-
-// 方便其他模組呼叫的 API：例如傳送密碼輸入事件
-void SendPasswordEvent(const char* pwd) {
-    access_control_SmartLockPacket packet = access_control_SmartLockPacket_init_default;
-    packet.sequence = 1; // 可以用全域變數累加
-    packet.which_packet_body = access_control_SmartLockPacket_stm32_message_tag;
-    
-    packet.packet_body.stm32_message.which_body = access_control_Stm32Message_password_input_tag;
-    strncpy(packet.packet_body.stm32_message.body.password_input.password, pwd, sizeof(packet.packet_body.stm32_message.body.password_input.password));
-    
-    // 寫入佇列 (不等待，若佇列滿了就放棄或回傳錯誤)
-    access_control_SmartLockPacket* p_packet = &packet;
-    osMessageQueuePut(smartLockTxQueueHandle, &p_packet, 0, 0);
-}
 void StartTask_Rx(void *argument)
 {
     access_control_SmartLockPacket rx_packet;
@@ -447,25 +518,59 @@ void StartTask_Rx(void *argument)
                     // 2. 根據 oneof body 判斷樹莓派傳來的是什麼指令
                     switch (pi_msg->which_body) {
                         
-                        case access_control_PiMessage_unlock_tag:
+                        case access_control_PiMessage_unlock_tag:{
+													
                             // 執行解鎖邏輯 
-                            // uint_8 open = 1;
-                            // xQueueSend(queueRelay, &open, portMAX_DELAY);
+                            uint8_t open = 1;
+                            xQueueSend(queueRelay, &open, portMAX_DELAY);
                             // 可以選擇回傳 CommandResponse 給樹莓派
                             break;
-                            
-                        case access_control_PiMessage_control_rgb_led_tag:
+												} 
+                        case access_control_PiMessage_control_rgb_led_tag:{
                             // 控制 RGB LED 燈號
+														access_control_ControlRgbLedCommand *led_cmd = &pi_msg->body.control_rgb_led;
+    
+														// 2. 讀取紅、綠、藍的布林值 (true / false)
+														bool r_status = led_cmd->red;
+														bool g_status = led_cmd->green;
+														bool b_status = led_cmd->blue;
 
-                            break;
+														// 3. 根據讀到的狀態，決定要送什麼字元給你的 taskLed
+														char led_color = '0'; // 預設關閉或無動作
+
+														if (r_status && g_status) {
+																led_color = 'Y';  // 紅 + 綠 = 黃燈 (對應你 taskLed 裡的 case 'Y')
+														} else if (r_status) {
+																led_color = 'R';  // 紅燈
+														} else if (g_status) {
+																led_color = 'G';  // 綠燈
+														} else if (b_status) {
+																led_color = 'B';  // 藍燈 (你可以在 taskLed 的 switch 補上 case 'B')
+														}
+
+														// 4. 將結果送入 queueLed
+														if (led_color != '0') {
+																xQueueSend(queueLed, &led_color, portMAX_DELAY);
+														}
+
+														// 可選：同時在 LCD 上顯示當前亮燈狀態
+														// LcdDisplay("LED Control", "Updating Color");
+														
+														break;
+												}
                             
                         case access_control_PiMessage_action_response_tag:
                             // 處理樹莓派對 STM32 之前請求的回應 (例如：人臉辨識結果)
                             if(pi_msg->body.action_response.status == access_control_StatusType_STATUS_TYPE_OK) {
                                 // 驗證成功，點綠燈
-                                // xQueueSend(queueLCD, &key_buffer, portMAX_DELAY);
+                                LcdDisplay("Verification","successful");
+																char led = 'G';
+																xQueueSend(queueLed,&led,portMAX_DELAY);
                             } else {
                                 // 驗證失敗處理
+																LcdDisplay("Verification","failed");
+																char led = 'R';
+																xQueueSend(queueLed,&led,portMAX_DELAY);
                             }
                             break;
                             
@@ -534,10 +639,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   }
 
   if (isKeyPressed == 1) {
-    if(mode == 0){
-      char str[17] = "asdfg";
-      xQueueSendFromISR(queueLCD, &str,NULL);
-    }
+    switch(mode){
+			case 0:
+				//臉部註冊
+				SendSmartLockSignal(SIGNAL_FACE_REGISTRATION);
+				break;
+			case 1:
+				//RFID註冊
+				SendSmartLockSignal(SIGNAL_RFID_REGISTRATION);
+				break;
+			case 2:
+				//系統重設
+				SendSmartLockSignal(SIGNAL_SYSTEM_RESET);
+				break;
+			case 3:
+				break;
+		}
   }
   
 

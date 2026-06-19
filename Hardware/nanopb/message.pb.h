@@ -23,8 +23,9 @@ typedef struct _access_control_PasswordInputEvent {
     char password[16];
 } access_control_PasswordInputEvent;
 
+typedef PB_BYTES_ARRAY_T(10) access_control_RfidScannedEvent_uid_t;
 typedef struct _access_control_RfidScannedEvent {
-    pb_callback_t uid;
+    access_control_RfidScannedEvent_uid_t uid;
 } access_control_RfidScannedEvent;
 
 typedef struct _access_control_IrTriggeredEvent {
@@ -124,7 +125,7 @@ extern "C" {
 #define access_control_Stm32Message_init_default {0, {access_control_PasswordInputEvent_init_default}}
 #define access_control_PiMessage_init_default    {0, {access_control_UnlockCommand_init_default}}
 #define access_control_PasswordInputEvent_init_default {""}
-#define access_control_RfidScannedEvent_init_default {{{NULL}, NULL}}
+#define access_control_RfidScannedEvent_init_default {{0, {0}}}
 #define access_control_IrTriggeredEvent_init_default {0}
 #define access_control_FaceRegistrationEvent_init_default {0}
 #define access_control_RfidRegistrationEvent_init_default {0}
@@ -137,7 +138,7 @@ extern "C" {
 #define access_control_Stm32Message_init_zero    {0, {access_control_PasswordInputEvent_init_zero}}
 #define access_control_PiMessage_init_zero       {0, {access_control_UnlockCommand_init_zero}}
 #define access_control_PasswordInputEvent_init_zero {""}
-#define access_control_RfidScannedEvent_init_zero {{{NULL}, NULL}}
+#define access_control_RfidScannedEvent_init_zero {{0, {0}}}
 #define access_control_IrTriggeredEvent_init_zero {0}
 #define access_control_FaceRegistrationEvent_init_zero {0}
 #define access_control_RfidRegistrationEvent_init_zero {0}
@@ -214,8 +215,8 @@ X(a, STATIC,   SINGULAR, STRING,   password,          1)
 #define access_control_PasswordInputEvent_DEFAULT NULL
 
 #define access_control_RfidScannedEvent_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, BYTES,    uid,               1)
-#define access_control_RfidScannedEvent_CALLBACK pb_default_field_callback
+X(a, STATIC,   SINGULAR, BYTES,    uid,               1)
+#define access_control_RfidScannedEvent_CALLBACK NULL
 #define access_control_RfidScannedEvent_DEFAULT NULL
 
 #define access_control_IrTriggeredEvent_FIELDLIST(X, a) \
@@ -291,10 +292,7 @@ extern const pb_msgdesc_t access_control_CommandResponse_msg;
 #define access_control_CommandResponse_fields &access_control_CommandResponse_msg
 
 /* Maximum encoded size of messages (where known) */
-/* access_control_SmartLockPacket_size depends on runtime parameters */
-/* access_control_Stm32Message_size depends on runtime parameters */
-/* access_control_RfidScannedEvent_size depends on runtime parameters */
-#define ACCESS_CONTROL_MESSAGE_PB_H_MAX_SIZE     access_control_PiMessage_size
+#define ACCESS_CONTROL_MESSAGE_PB_H_MAX_SIZE     access_control_SmartLockPacket_size
 #define access_control_ActionResponse_size       35
 #define access_control_CommandResponse_size      2
 #define access_control_ControlRgbLedCommand_size 6
@@ -303,6 +301,9 @@ extern const pb_msgdesc_t access_control_CommandResponse_msg;
 #define access_control_PasswordInputEvent_size   17
 #define access_control_PiMessage_size            37
 #define access_control_RfidRegistrationEvent_size 0
+#define access_control_RfidScannedEvent_size     12
+#define access_control_SmartLockPacket_size      45
+#define access_control_Stm32Message_size         19
 #define access_control_SystemResetEvent_size     0
 #define access_control_UnlockCommand_size        0
 
