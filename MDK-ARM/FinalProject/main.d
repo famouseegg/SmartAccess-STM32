@@ -48,4 +48,9 @@ finalproject/main.o: ..\Core\Src\main.c ..\Core\Inc\main.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\queue.h \
   E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdio.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\semphr.h \
-  ..\Core\Inc\RC522.h ..\Core\Inc\i2c_lcd.h
+  ..\Hardware\RC522.h ..\Hardware\i2c_lcd.h \
+  ..\Hardware\nanopb\pb_encode.h ..\Hardware\nanopb\pb.h \
+  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
+  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\string.h \
+  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\limits.h \
+  ..\Hardware\nanopb\message.pb.h ..\Hardware\nanopb\pb_decode.h

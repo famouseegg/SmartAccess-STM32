@@ -1,4 +1,4 @@
-finalproject/i2c_lcd.o: ..\Core\Src\i2c_lcd.c ..\Core\Inc\i2c_lcd.h \
+finalproject/i2c_lcd.o: ..\Hardware\i2c_lcd.c ..\Hardware\i2c_lcd.h \
   E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdint.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal.h \
   ..\Core\Inc\stm32f4xx_hal_conf.h \

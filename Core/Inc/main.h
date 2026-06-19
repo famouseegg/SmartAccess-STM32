@@ -101,6 +101,8 @@ void Error_Handler(void);
 #define SR505_OUT_Pin GPIO_PIN_10
 #define SR505_OUT_GPIO_Port GPIOC
 #define SR505_OUT_EXTI_IRQn EXTI15_10_IRQn
+#define ISOPEN_Pin GPIO_PIN_1
+#define ISOPEN_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 

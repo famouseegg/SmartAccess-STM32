@@ -8,8 +8,6 @@
 "finalproject\usart.o"
 "finalproject\stm32f4xx_it.o"
 "finalproject\stm32f4xx_hal_msp.o"
-"finalproject\i2c_lcd.o"
-"finalproject\rc522.o"
 "finalproject\stm32f4xx_hal_rcc.o"
 "finalproject\stm32f4xx_hal_rcc_ex.o"
 "finalproject\stm32f4xx_hal_flash.o"
@@ -40,6 +38,12 @@
 "finalproject\cmsis_os2.o"
 "finalproject\heap_4.o"
 "finalproject\port.o"
+"finalproject\message.pb_1.o"
+"finalproject\pb_common_1.o"
+"finalproject\pb_decode_1.o"
+"finalproject\pb_encode_1.o"
+"finalproject\i2c_lcd_1.o"
+"finalproject\rc522_1.o"
 --library_type=microlib --strict --scatter "FinalProject\FinalProject.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

@@ -340,7 +340,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F429xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;..\Hardware;..\Hardware\nanopb</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -433,16 +433,6 @@
               <FileName>stm32f4xx_hal_msp.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Core/Src/stm32f4xx_hal_msp.c</FilePath>
-            </File>
-            <File>
-              <FileName>i2c_lcd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Core\Src\i2c_lcd.c</FilePath>
-            </File>
-            <File>
-              <FileName>RC522.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Core\Src\RC522.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -608,6 +598,41 @@
               <FileName>port.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F/port.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Hardware</GroupName>
+          <Files>
+            <File>
+              <FileName>message.pb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\nanopb\message.pb.c</FilePath>
+            </File>
+            <File>
+              <FileName>pb_common.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\nanopb\pb_common.c</FilePath>
+            </File>
+            <File>
+              <FileName>pb_decode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\nanopb\pb_decode.c</FilePath>
+            </File>
+            <File>
+              <FileName>pb_encode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\nanopb\pb_encode.c</FilePath>
+            </File>
+            <File>
+              <FileName>i2c_lcd.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\i2c_lcd.c</FilePath>
+            </File>
+            <File>
+              <FileName>RC522.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Hardware\RC522.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -33,6 +33,10 @@
 #include "semphr.h"
 #include "RC522.h"
 #include "i2c_lcd.h"
+#include "pb_encode.h"
+#include "message.pb.h"
+#include "queue.h"
+#include "pb_decode.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,11 +63,24 @@ TaskHandle_t handleRFID;
 TaskHandle_t handleRelay;
 TaskHandle_t handleLed;
 TaskHandle_t handleLCD;
+TaskHandle_t handIsopen;
+TaskHandle_t handleTx;
+TaskHandle_t handleRx;
 
 QueueHandle_t queueKeypad;
 QueueHandle_t queueRFID;
 QueueHandle_t queueLed;
 QueueHandle_t queueLCD;
+QueueHandle_t pb_tx_queue = NULL;
+
+extern UART_HandleTypeDef huart2;
+
+typedef enum {
+    RX_STATE_WAIT_HEADER1,
+    RX_STATE_WAIT_HEADER2,
+    RX_STATE_WAIT_LEN,
+    RX_STATE_DATA
+} RxState_t;
 
 SemaphoreHandle_t xPIR_Semaphore;
 SemaphoreHandle_t xRelay_Semaphore;
@@ -82,12 +99,12 @@ void MX_FREERTOS_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void taskKeypad(void* pvParm){
-    printf("Keypad Task Started\r\n");
-    
+   printf("Keypad Task Started\r\n");
     uint16_t COL_PINS[4] = {COL1_Pin, COL2_Pin, COL3_Pin, COL4_Pin};
     uint16_t ROW_PINS[4] = {ROW1_Pin, ROW2_Pin, ROW3_Pin, ROW4_Pin};
-    
-    
+
+    static char key_buffer[17] = {0}; // 用於存儲按鍵輸入的緩衝區，最大長度為16個字符 + 結束符
+	
     char key_matrix_values[4][4] = {
         {'1',  '2',  '3',  'A'},
         {'4',  '5',  '6',  'B'},
@@ -120,7 +137,7 @@ void taskKeypad(void* pvParm){
                     if (HAL_GPIO_ReadPin(GPIOF, ROW_PINS[r]) == GPIO_PIN_RESET)
                     {
                         mode = key_matrix_values[r][c];
-                        printf("Key Pressed: %c\r\n", mode);
+                        // printf("Key Pressed: %c\r\n", mode);
                         isKeyPressed = 1;
                         
                       
@@ -139,16 +156,32 @@ void taskKeypad(void* pvParm){
 
         if (isKeyPressed == 1) 
         {
-            // xQueueSend(queueSwitch, &mode, portMAX_DELAY);
+          int len = strlen(key_buffer);
+          if(mode == '*'){
+            if(len > 0){
+              key_buffer[len-1] = '\0';
+            }
+          }
+          else if(mode == '#')
+            // XQueueSend(queueKeypad, &key_buffer, portMAX_DELAY);
+            key_buffer[0] = '\0';
+          else{
+            if(len < 16){
+              key_buffer[len] = mode;
+              key_buffer[len+1] = '\0';
+            }
+          }
+
+          xQueueSend(queueLCD, &key_buffer, portMAX_DELAY);
+          printf("Current Key Buffer: %s\r\n", key_buffer);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(20));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
 void taskPIR(void* pvParm)
 {
-    printf("SR505 PIR Task Started\r\n");
-  
+  printf("Running PIR Task\r\n");
     while(1)
     {
         
@@ -165,7 +198,6 @@ void taskPIR(void* pvParm)
 
 void taskRFID(void* pvParm)
 {
-  printf("RFID Task Started, Waiting for Card...\r\n");
   
   MFRC522_Init(); 
 
@@ -199,18 +231,34 @@ void taskRFID(void* pvParm)
     }
   }
 }
+void taskIsOpen(void* pvParm)
+{
+  uint8_t isOpen = 0;
+    while(1)
+    {
+      if(HAL_GPIO_ReadPin(GPIOD, ISOPEN_Pin))
+      {
+        isOpen = 1;
+      }
+      else
+      {
+        isOpen = 0;
+      }
+      // printf("Door Status: %s\r\n", isOpen ? "Open" : "Closed");
+      vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
 void taskRelay(void* pvParm)
 {
     while(1)
     {
-        if (xSemaphoreTake(xRelay_Semaphore, portMAX_DELAY) == pdTRUE)
-        {
-            printf("Relay Activated\r\n");
-            HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_SET);
-            vTaskDelay(pdMS_TO_TICKS(5000));
-            HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_RESET);
-            printf("Relay Deactivated\r\n");
-        }
+      if (xSemaphoreTake(xRelay_Semaphore, portMAX_DELAY) == pdTRUE)
+      {   
+        HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_SET);
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_RESET);
+        vTaskDelay(pdMS_TO_TICKS(5000));
+      }
     }
 }
 void taskLed(void* pvParm)
@@ -256,26 +304,42 @@ void init_lcds(void) {
 void taskLCD(void* pvParm)
 {
     vTaskDelay(pdMS_TO_TICKS(100));
-    // 💡 在任務開頭進行 LCD 初始化，確保核心跑起來後才動硬體
     lcd1.hi2c = &hi2c1;
     lcd1.address = 0x4E; // 根據你 LCD 實際地址調整
     lcd_init(&lcd1);
     lcd_clear(&lcd1);
-    lcd_puts(&lcd1, "LCD 1 Ready");
-
-    printf("LCD Task Started\r\n");
+    lcd_puts(&lcd1, "System Ready");
+    
+    char displayText[17] = {0}; // 用於接收從 queueLCD 發送的字串
 
     while(1)
-    {
-        // 不要每一秒都瘋狂覆寫一模一樣的字，LCD 畫面會閃爍且霸佔 I2C
-        // 這裡做一次簡單的顯示測試
-        lcd_clear(&lcd1);
-        lcd_gotoxy(&lcd1, 0, 0);
-        lcd_puts(&lcd1, "System Running");
-        lcd_gotoxy(&lcd1, 0, 1);
-        lcd_puts(&lcd1, "LCD 1 Displaying");
-        // 讓出 CPU 執行權 5 秒
-        vTaskDelay(pdMS_TO_TICKS(5000)); 
+    {   
+        if(xQueueReceive(queueLCD,&displayText, portMAX_DELAY) == pdTRUE)
+        {
+          lcd_clear(&lcd1);
+          lcd_gotoxy(&lcd1, 0, 0);
+          lcd_puts(&lcd1, "keypad:");
+          
+          // 第二行顯示完整的字串
+          lcd_gotoxy(&lcd1, 0, 1);
+          lcd_puts(&lcd1, displayText); 
+          printf("Displaying on LCD: %s\r\n", displayText);
+            
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+      }
+}
+
+void StartTask_Tx(void *argument)
+{
+    while(1){
+      vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+void StartTask_Rx(void *argument)
+{
+    while(1){
+      vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
@@ -376,17 +440,22 @@ int main(void)
   queueKeypad = xQueueCreate(3, sizeof(char));
   queueLed = xQueueCreate(3, sizeof(char));
   queueRFID = xQueueCreate(10, sizeof(char));
-  queueLCD = xQueueCreate(10, sizeof(char));
+  queueLCD = xQueueCreate(10, sizeof(char[17]));
+  pb_tx_queue = xQueueCreate(5, sizeof(DoorLockMessage));
 
   xPIR_Semaphore = xSemaphoreCreateBinary();
   xRelay_Semaphore = xSemaphoreCreateBinary();
   
+  xTaskCreate(taskIsOpen,"IsOpen",128,NULL,4,&handIsopen);
   xTaskCreate(taskPIR,   "PIR",   256, NULL, 4, &handlePIR);   
   xTaskCreate(taskRFID,  "RFID",  256, NULL, 3, &handleRFID);  
   xTaskCreate(taskKeypad,"Keypad",256, NULL, 2, &handleKeypad);
   xTaskCreate(taskRelay, "Relay", 128, NULL, 2, &handleRelay); 
   xTaskCreate(taskLed,   "LED",   128, NULL, 1, &handleLed);   
   xTaskCreate(taskLCD,   "LCD",   256, NULL, 1, &handleLCD);   
+  xTaskCreate(StartTask_Tx, "TxTask", 512, NULL, 1, &handleTx);
+  xTaskCreate(StartTask_Rx, "RxTask", 512, NULL, 1, &handleRx);
+  
 
   vTaskStartScheduler();
   /* USER CODE END 2 */
