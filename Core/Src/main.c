@@ -66,14 +66,18 @@ TaskHandle_t handleRFID;
 TaskHandle_t handleRelay;
 TaskHandle_t handleLed;
 TaskHandle_t handleLCD;
-TaskHandle_t handIsopen;
 TaskHandle_t handleTx;
 TaskHandle_t handleRx;
+TaskHandle_t handleIsopen;
 
 QueueHandle_t queueKeypad;
 QueueHandle_t queueRFID;
 QueueHandle_t queueLed;
 QueueHandle_t queueLCD;
+QueueHandle_t queueRelay;
+
+SemaphoreHandle_t xPIR_Semaphore;
+
 
 // FreeRTOS 佇列控制塊，用於將要傳送的訊息交給 Tx Task
 osMessageQId smartLockTxQueueHandle;
@@ -93,8 +97,10 @@ typedef enum {
     RX_STATE_DATA
 } RxState_t;
 
-SemaphoreHandle_t xPIR_Semaphore;
-SemaphoreHandle_t xRelay_Semaphore;
+typedef struct{
+  char line1[17];
+  char line2[17];
+}LcdDisplay_t;
 
 I2C_LCD_HandleTypeDef lcd1;
 I2C_LCD_HandleTypeDef lcd2;
@@ -109,6 +115,14 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void LcdDisplay(char line1[16], char line2[16]) {
+    LcdDisplay_t displaytext;
+
+    snprintf(displaytext.line1, sizeof(displaytext.line1), "%s", line1);
+    snprintf(displaytext.line2, sizeof(displaytext.line2), "%s", line2);
+
+    xQueueSend(queueLCD, &displaytext, portMAX_DELAY);
+}
 void taskKeypad(void* pvParm){
    printf("Keypad Task Started\r\n");
     uint16_t COL_PINS[4] = {COL1_Pin, COL2_Pin, COL3_Pin, COL4_Pin};
@@ -182,8 +196,7 @@ void taskKeypad(void* pvParm){
               key_buffer[len+1] = '\0';
             }
           }
-
-          xQueueSend(queueLCD, &key_buffer, portMAX_DELAY);
+					LcdDisplay("keypad: ",key_buffer);
           printf("Current Key Buffer: %s\r\n", key_buffer);
         }
 
@@ -202,7 +215,6 @@ void taskPIR(void* pvParm)
             xSemaphoreTake(xPIR_Semaphore, 0);
             vTaskDelay(pdMS_TO_TICKS(2000));
         }
-        
         
     }
 }
@@ -244,37 +256,52 @@ void taskRFID(void* pvParm)
 }
 void taskIsOpen(void* pvParm)
 {
+  uint8_t detectingDoorClosing = 0;
   uint8_t isOpen = 0;
-    while(1)
+  while(1)
+  {
+    if(HAL_GPIO_ReadPin(GPIOD, ISOPEN_Pin))
     {
-      if(HAL_GPIO_ReadPin(GPIOD, ISOPEN_Pin))
-      {
-        isOpen = 1;
-      }
-      else
-      {
-        isOpen = 0;
-      }
-      // printf("Door Status: %s\r\n", isOpen ? "Open" : "Closed");
-      vTaskDelay(pdMS_TO_TICKS(1000));
+      isOpen = 1;
+      detectingDoorClosing = 1;
     }
+    else
+    {
+      isOpen = 0;
+      if(detectingDoorClosing)
+      {
+        xQueueSend(queueRelay, &isOpen, portMAX_DELAY);
+        detectingDoorClosing = 0;
+      }
+      // printf("Door is %s\r\n", isOpen ? "Open" : "Closed");
+     
+
+    }
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
 }
 void taskRelay(void* pvParm)
 {
-    while(1)
-    {
-      if (xSemaphoreTake(xRelay_Semaphore, portMAX_DELAY) == pdTRUE)
-      {   
-        HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_SET);
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_RESET);
-        vTaskDelay(pdMS_TO_TICKS(5000));
+  uint8_t open = 0;
+  while(1)
+  {
+    if(xQueueReceive(queueRelay,&open, portMAX_DELAY) == pdTRUE)
+    {   
+      if(open)
+      {
+        HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_SET);      
       }
+      else
+      {
+        HAL_GPIO_WritePin(GPIOD, RELAY_Pin, GPIO_PIN_RESET);
+      }
+      vTaskDelay(pdMS_TO_TICKS(1000));
     }
+  }
 }
 void taskLed(void* pvParm)
 {
-
+  HAL_GPIO_WritePin(GPIOD, LED_B_Pin | LED_G_Pin | LED_R_Pin, GPIO_PIN_SET);
   while(1)
   {
     char ledCommand;
@@ -318,7 +345,7 @@ void taskLCD(void* pvParm)
     lcd_clear(&lcd1);
     lcd_puts(&lcd1, "System Ready");
     
-    char displayText[17] = {0}; // 用於接收從 queueLCD 發送的字串
+		LcdDisplay_t displayText;// 用於接收從 queueLCD 發送的字串
 
     while(1)
     {   
@@ -326,12 +353,11 @@ void taskLCD(void* pvParm)
         {
           lcd_clear(&lcd1);
           lcd_gotoxy(&lcd1, 0, 0);
-          lcd_puts(&lcd1, "keypad:");
+          lcd_puts(&lcd1, displayText.line1);
           
           // 第二行顯示完整的字串
           lcd_gotoxy(&lcd1, 0, 1);
-          lcd_puts(&lcd1, displayText); 
-          printf("Displaying on LCD: %s\r\n", displayText);
+          lcd_puts(&lcd1, displayText.line2); 
             
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -422,20 +448,22 @@ void StartTask_Rx(void *argument)
                     switch (pi_msg->which_body) {
                         
                         case access_control_PiMessage_unlock_tag:
-                            // 執行解鎖邏輯 (例如推動繼電器或伺服馬達)
-                            
+                            // 執行解鎖邏輯 
+                            // uint_8 open = 1;
+                            // xQueueSend(queueRelay, &open, portMAX_DELAY);
                             // 可以選擇回傳 CommandResponse 給樹莓派
                             break;
                             
                         case access_control_PiMessage_control_rgb_led_tag:
                             // 控制 RGB LED 燈號
-                           
+
                             break;
                             
                         case access_control_PiMessage_action_response_tag:
                             // 處理樹莓派對 STM32 之前請求的回應 (例如：人臉辨識結果)
                             if(pi_msg->body.action_response.status == access_control_StatusType_STATUS_TYPE_OK) {
-                                // 驗證成功，點綠燈或播放提示音
+                                // 驗證成功，點綠燈
+                                // xQueueSend(queueLCD, &key_buffer, portMAX_DELAY);
                             } else {
                                 // 驗證失敗處理
                             }
@@ -461,17 +489,8 @@ void StartTask_Rx(void *argument)
     }
 }
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-  if (GPIO_Pin == SR505_OUT_Pin) 
-  {
-      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-      
-      xSemaphoreGiveFromISR(xPIR_Semaphore, &xHigherPriorityTaskWoken);
-      
-      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-  }
-  
-  // 這裡的邏輯是：當 SW1 或 SW2 被按下時，讀取按鈕狀態並將對應的模式發送到 queueSwitch
-  uint8_t mode;
+
+  uint8_t mode=9;
   uint8_t isKeyPressed = 0;
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   switch (GPIO_Pin) {
@@ -503,6 +522,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
       }
       break;
     }
+    case SR505_OUT_Pin: {
+      xSemaphoreGiveFromISR(xPIR_Semaphore, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+      break;
+    }
     default:{
       break;
     }
@@ -510,7 +534,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   }
 
   if (isKeyPressed == 1) {
-    
+    if(mode == 0){
+      char str[17] = "asdfg";
+      xQueueSendFromISR(queueLCD, &str,NULL);
+    }
   }
   
 
@@ -557,19 +584,19 @@ int main(void)
 
   InitSmartLockComms(); // 初始化與樹莓派通訊的 Queue 和 UART 接收
 
-  queueKeypad = xQueueCreate(3, sizeof(char));
+  queueKeypad = xQueueCreate(3, sizeof(char[17]));
   queueLed = xQueueCreate(3, sizeof(char));
   queueRFID = xQueueCreate(10, sizeof(char));
-  queueLCD = xQueueCreate(10, sizeof(char[17]));
+  queueLCD = xQueueCreate(10, sizeof(LcdDisplay_t));
+  queueRelay = xQueueCreate(3, sizeof(uint8_t));
 
   xPIR_Semaphore = xSemaphoreCreateBinary();
-  xRelay_Semaphore = xSemaphoreCreateBinary();
   
-  xTaskCreate(taskIsOpen,"IsOpen",128,NULL,4,&handIsopen);
+  xTaskCreate(taskIsOpen,"IsOpen",128,NULL,4,&handleIsopen);
   xTaskCreate(taskPIR,   "PIR",   256, NULL, 4, &handlePIR);   
   xTaskCreate(taskRFID,  "RFID",  256, NULL, 3, &handleRFID);  
-  xTaskCreate(taskKeypad,"Keypad",256, NULL, 2, &handleKeypad);
-  xTaskCreate(taskRelay, "Relay", 128, NULL, 2, &handleRelay); 
+  xTaskCreate(taskKeypad,"Keypad",256, NULL, 3, &handleKeypad);
+  xTaskCreate(taskRelay, "Relay", 256, NULL, 2, &handleRelay); 
   xTaskCreate(taskLed,   "LED",   128, NULL, 1, &handleLed);   
   xTaskCreate(taskLCD,   "LCD",   256, NULL, 1, &handleLCD);   
   xTaskCreate(StartTask_Tx, "TxTask", 512, NULL, 1, &handleTx);
@@ -580,11 +607,11 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Init scheduler */
-  osKernelInitialize();  /* Call init function for freertos objects (in freertos.c) */
-  MX_FREERTOS_Init();
+  // osKernelInitialize();  /* Call init function for freertos objects (in freertos.c) */
+  // MX_FREERTOS_Init();
 
-  /* Start scheduler */
-  osKernelStart();
+  // /* Start scheduler */
+  // osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
