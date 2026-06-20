@@ -85,6 +85,9 @@ void Error_Handler(void);
 #define ROW3_GPIO_Port GPIOF
 #define ROW4_Pin GPIO_PIN_10
 #define ROW4_GPIO_Port GPIOF
+#define SR505_OUT_Pin GPIO_PIN_0
+#define SR505_OUT_GPIO_Port GPIOC
+#define SR505_OUT_EXTI_IRQn EXTI0_IRQn
 #define RC522_RST_Pin GPIO_PIN_4
 #define RC522_RST_GPIO_Port GPIOA
 #define RC522_IRQ_Pin GPIO_PIN_1
@@ -96,13 +99,11 @@ void Error_Handler(void);
 #define LED_B_GPIO_Port GPIOD
 #define LED_R_Pin GPIO_PIN_13
 #define LED_R_GPIO_Port GPIOD
-#define RELAY_Pin GPIO_PIN_14
-#define RELAY_GPIO_Port GPIOD
-#define SR505_OUT_Pin GPIO_PIN_10
-#define SR505_OUT_GPIO_Port GPIOC
-#define SR505_OUT_EXTI_IRQn EXTI15_10_IRQn
-#define ISOPEN_Pin GPIO_PIN_1
-#define ISOPEN_GPIO_Port GPIOD
+#define RELAY_IN_Pin GPIO_PIN_14
+#define RELAY_IN_GPIO_Port GPIOD
+#define RELAY_OUT_Pin GPIO_PIN_2
+#define RELAY_OUT_GPIO_Port GPIOD
+#define RELAY_OUT_EXTI_IRQn EXTI2_IRQn
 
 /* USER CODE BEGIN Private defines */
 

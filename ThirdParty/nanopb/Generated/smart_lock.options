@@ -1,0 +1,4 @@
+smart_lock.PINInputEvent.pin                max_size:17
+smart_lock.RfidScannedEvent.uid             max_size:4
+smart_lock.RfidRegistrationEvent.uid        max_size:4
+smart_lock.StatusResponse.message           max_size:64

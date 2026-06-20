@@ -1,13 +1,8 @@
 finalproject/cmsis_os2.o: \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.c \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\string.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\CMSIS_RTOS_V2\cmsis_os2.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdint.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stddef.h \
   ..\Drivers\CMSIS\Include\cmsis_compiler.h \
   ..\Drivers\CMSIS\Include\cmsis_armclang.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\arm_compat.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\arm_acle.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h \
   ..\Core\Inc\FreeRTOSConfig.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h \
@@ -26,8 +21,6 @@ finalproject/cmsis_os2.o: \
   ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h \
   ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f429xx.h \
   ..\Drivers\CMSIS\Include\core_cm4.h \
-  ..\Drivers\CMSIS\Include\cmsis_version.h \
-  ..\Drivers\CMSIS\Include\mpu_armv7.h \
   ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal.h \
   ..\Core\Inc\stm32f4xx_hal_conf.h \

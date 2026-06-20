@@ -10,14 +10,14 @@
       <TargetName>FinalProject</TargetName>
       <ToolsetNumber>0x4</ToolsetNumber>
       <ToolsetName>ARM-ADS</ToolsetName>
-      <pCCUsed>6190000::V6.19::ARMCLANG</pCCUsed>
+      <pCCUsed>6240000::V6.24::ARMCLANG</pCCUsed>
       <uAC6>1</uAC6>
       <TargetOption>
         <TargetCommonOption>
           <Device>STM32F429ZITx</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F4xx_DFP.2.16.0</PackID>
-          <PackURL>http://www.keil.com/pack/</PackURL>
+          <PackID>Keil.STM32F4xx_DFP.3.1.1</PackID>
+          <PackURL>https://www.keil.com/pack/</PackURL>
           <Cpu>IRAM(0x20000000-0x2002FFFF) IRAM2(0x10000000-0x1000FFFF) IROM(0x8000000-0x81FFFFF) CLOCK(25000000) FPU2 CPUTYPE("Cortex-M4") TZ</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
           <StartupFile></StartupFile>
@@ -81,7 +81,7 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>0</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name></UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
@@ -330,17 +330,17 @@
             <uGnu>0</uGnu>
             <useXO>0</useXO>
             <v6Lang>3</v6Lang>
-            <v6LangP>5</v6LangP>
+            <v6LangP>8</v6LangP>
             <vShortEn>1</vShortEn>
             <vShortWch>1</vShortWch>
             <v6Lto>0</v6Lto>
             <v6WtE>0</v6WtE>
             <v6Rtti>0</v6Rtti>
             <VariousControls>
-              <MiscControls></MiscControls>
+              <MiscControls>-finput-charset=utf-8</MiscControls>
               <Define>USE_HAL_DRIVER,STM32F429xx</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;..\Hardware;..\Hardware\nanopb</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc;../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F;../Drivers/CMSIS/Device/ST/STM32F4xx/Include;../Drivers/CMSIS/Include;../App/Inc;../Hardware;../ThirdParty;../ThirdParty/nanopb;../ThirdParty/nanopb/Generated;../ThirdParty/serialtransfer</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -358,7 +358,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/CMSIS/Include</IncludePath>
             </VariousControls>
           </Aads>
           <LDads>
@@ -520,16 +520,6 @@
               <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c</FilePath>
             </File>
             <File>
-              <FileName>stm32f4xx_hal_tim.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c</FilePath>
-            </File>
-            <File>
-              <FileName>stm32f4xx_hal_tim_ex.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c</FilePath>
-            </File>
-            <File>
               <FileName>stm32f4xx_hal_uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c</FilePath>
@@ -602,37 +592,62 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>App</GroupName>
+          <Files>
+            <File>
+              <FileName>serial_comm.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\App\Src\serial_comm.cpp</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>Hardware</GroupName>
           <Files>
             <File>
-              <FileName>message.pb.c</FileName>
+              <FileName>lcd1602_i2c.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\Hardware\nanopb\message.pb.c</FilePath>
-            </File>
-            <File>
-              <FileName>pb_common.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardware\nanopb\pb_common.c</FilePath>
-            </File>
-            <File>
-              <FileName>pb_decode.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardware\nanopb\pb_decode.c</FilePath>
-            </File>
-            <File>
-              <FileName>pb_encode.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardware\nanopb\pb_encode.c</FilePath>
-            </File>
-            <File>
-              <FileName>i2c_lcd.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Hardware\i2c_lcd.c</FilePath>
+              <FilePath>..\Hardware\lcd1602_i2c.c</FilePath>
             </File>
             <File>
               <FileName>RC522.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Hardware\RC522.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>ThirdParty</GroupName>
+          <Files>
+            <File>
+              <FileName>pb_common.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ThirdParty\nanopb\pb_common.c</FilePath>
+            </File>
+            <File>
+              <FileName>pb_decode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ThirdParty\nanopb\pb_decode.c</FilePath>
+            </File>
+            <File>
+              <FileName>pb_encode.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ThirdParty\nanopb\pb_encode.c</FilePath>
+            </File>
+            <File>
+              <FileName>smart_lock.pb.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\ThirdParty\nanopb\Generated\smart_lock.pb.c</FilePath>
+            </File>
+            <File>
+              <FileName>Packet.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\ThirdParty\serialtransfer\Packet.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>SerialTransfer.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>..\ThirdParty\serialtransfer\SerialTransfer.cpp</FilePath>
             </File>
           </Files>
         </Group>
