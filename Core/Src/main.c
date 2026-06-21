@@ -93,6 +93,7 @@ void taskKeypad(void* pvParm) {
   uint16_t ROW_PINS[4] = {ROW1_Pin, ROW2_Pin, ROW3_Pin, ROW4_Pin};
   bool isDoorOpen = false;
   bool isRegistration = false;
+  bool isUpdation = false;
 
   char key_matrix_values[4][4] = {{'1', '2', '3', 'A'},
                                   {'4', '5', '6', 'B'},
@@ -151,10 +152,21 @@ void taskKeypad(void* pvParm) {
           break;
         case '#':  // 確認輸入
           printf("\r\n[Keypad] PIN Entered: %s\r\n", key_buffer);
-          SendPINEvent(key_buffer);
+          if (isUpdation == true) {
+            SendPINUpdatedEvent(key_buffer);
+            isUpdation = false;
+          } else {
+            SendPINEvent(key_buffer);
+          }
           key_buffer[0] = '\0';
           break;
-        case 'A':
+        case 'A':  // 更新密碼
+          if (isDoorOpen == true) {
+            snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
+                     "PIN Update");
+            isUpdation = true;
+            key_buffer[0] = '\0';
+          }
           break;
         case 'B':  // 註冊人臉
           if (isDoorOpen == true) {
@@ -187,7 +199,7 @@ void taskKeypad(void* pvParm) {
           break;
       }
 
-      if (!isRegistration) {
+      if (!isRegistration && !isUpdation) {
         snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
                  "Keypad Input");
       }

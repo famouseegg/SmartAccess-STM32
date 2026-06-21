@@ -151,6 +151,18 @@ extern "C" void SendPINEvent(const char* pwd) {
   xQueueSend(smartLockTxQueueHandle, &packet, 0);
 }
 
+extern "C" void SendPINUpdatedEvent(const char* new_pwd) {
+  smart_lock_SmartLockPacket packet = smart_lock_SmartLockPacket_init_default;
+  packet.which_packet_body = smart_lock_SmartLockPacket_stm32_message_tag;
+  packet.packet_body.stm32_message.which_body =
+      smart_lock_Stm32Message_pin_updated_tag;
+
+  strncpy(packet.packet_body.stm32_message.body.pin_updated.pin, new_pwd,
+          sizeof(packet.packet_body.stm32_message.body.pin_updated.pin) - 1);
+
+  xQueueSend(smartLockTxQueueHandle, &packet, 0);
+}
+
 extern "C" void SendRfidEvent(const uint8_t* uid_data, uint16_t uid_len) {
   smart_lock_SmartLockPacket packet = smart_lock_SmartLockPacket_init_default;
   packet.which_packet_body = smart_lock_SmartLockPacket_stm32_message_tag;

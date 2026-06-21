@@ -23,6 +23,10 @@ typedef struct _smart_lock_PINInputEvent {
     char pin[17];
 } smart_lock_PINInputEvent;
 
+typedef struct _smart_lock_PINUpdatedEvent {
+    char pin[17];
+} smart_lock_PINUpdatedEvent;
+
 typedef PB_BYTES_ARRAY_T(4) smart_lock_RfidScannedEvent_uid_t;
 typedef struct _smart_lock_RfidScannedEvent {
     smart_lock_RfidScannedEvent_uid_t uid;
@@ -64,6 +68,7 @@ typedef struct _smart_lock_Stm32Message {
     pb_size_t which_body;
     union {
         smart_lock_PINInputEvent pin_input;
+        smart_lock_PINUpdatedEvent pin_updated;
         smart_lock_RfidScannedEvent rfid_scanned;
         smart_lock_RfidRegistrationEvent rfid_registration;
         smart_lock_FaceRegistrationEvent face_registration;
@@ -112,6 +117,7 @@ extern "C" {
 
 
 
+
 #define smart_lock_StatusResponse_status_ENUMTYPE smart_lock_StatusType
 
 
@@ -120,6 +126,7 @@ extern "C" {
 #define smart_lock_Stm32Message_init_default     {0, {smart_lock_PINInputEvent_init_default}}
 #define smart_lock_PiMessage_init_default        {0, {smart_lock_UnlockCommand_init_default}}
 #define smart_lock_PINInputEvent_init_default    {""}
+#define smart_lock_PINUpdatedEvent_init_default  {""}
 #define smart_lock_RfidScannedEvent_init_default {{0, {0}}}
 #define smart_lock_RfidRegistrationEvent_init_default {{0, {0}}}
 #define smart_lock_FaceRegistrationEvent_init_default {0}
@@ -132,6 +139,7 @@ extern "C" {
 #define smart_lock_Stm32Message_init_zero        {0, {smart_lock_PINInputEvent_init_zero}}
 #define smart_lock_PiMessage_init_zero           {0, {smart_lock_UnlockCommand_init_zero}}
 #define smart_lock_PINInputEvent_init_zero       {""}
+#define smart_lock_PINUpdatedEvent_init_zero     {""}
 #define smart_lock_RfidScannedEvent_init_zero    {{0, {0}}}
 #define smart_lock_RfidRegistrationEvent_init_zero {{0, {0}}}
 #define smart_lock_FaceRegistrationEvent_init_zero {0}
@@ -143,6 +151,7 @@ extern "C" {
 
 /* Field tags (for use in manual encoding/decoding) */
 #define smart_lock_PINInputEvent_pin_tag         1
+#define smart_lock_PINUpdatedEvent_pin_tag       1
 #define smart_lock_RfidScannedEvent_uid_tag      1
 #define smart_lock_RfidRegistrationEvent_uid_tag 1
 #define smart_lock_ControlRgbLedCommand_red_tag  1
@@ -151,12 +160,13 @@ extern "C" {
 #define smart_lock_StatusResponse_status_tag     1
 #define smart_lock_StatusResponse_message_tag    2
 #define smart_lock_Stm32Message_pin_input_tag    1
-#define smart_lock_Stm32Message_rfid_scanned_tag 2
-#define smart_lock_Stm32Message_rfid_registration_tag 3
-#define smart_lock_Stm32Message_face_registration_tag 4
-#define smart_lock_Stm32Message_ir_triggered_tag 5
-#define smart_lock_Stm32Message_system_reset_tag 6
-#define smart_lock_Stm32Message_status_response_tag 7
+#define smart_lock_Stm32Message_pin_updated_tag  2
+#define smart_lock_Stm32Message_rfid_scanned_tag 3
+#define smart_lock_Stm32Message_rfid_registration_tag 4
+#define smart_lock_Stm32Message_face_registration_tag 5
+#define smart_lock_Stm32Message_ir_triggered_tag 6
+#define smart_lock_Stm32Message_system_reset_tag 7
+#define smart_lock_Stm32Message_status_response_tag 8
 #define smart_lock_PiMessage_unlock_tag          1
 #define smart_lock_PiMessage_control_rgb_led_tag 2
 #define smart_lock_PiMessage_status_response_tag 3
@@ -176,15 +186,17 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (packet_body,pi_message,packet_body.pi_messag
 
 #define smart_lock_Stm32Message_FIELDLIST(X, a) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (body,pin_input,body.pin_input),   1) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,rfid_scanned,body.rfid_scanned),   2) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,rfid_registration,body.rfid_registration),   3) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,face_registration,body.face_registration),   4) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,ir_triggered,body.ir_triggered),   5) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,system_reset,body.system_reset),   6) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (body,status_response,body.status_response),   7)
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,pin_updated,body.pin_updated),   2) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,rfid_scanned,body.rfid_scanned),   3) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,rfid_registration,body.rfid_registration),   4) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,face_registration,body.face_registration),   5) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,ir_triggered,body.ir_triggered),   6) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,system_reset,body.system_reset),   7) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (body,status_response,body.status_response),   8)
 #define smart_lock_Stm32Message_CALLBACK NULL
 #define smart_lock_Stm32Message_DEFAULT NULL
 #define smart_lock_Stm32Message_body_pin_input_MSGTYPE smart_lock_PINInputEvent
+#define smart_lock_Stm32Message_body_pin_updated_MSGTYPE smart_lock_PINUpdatedEvent
 #define smart_lock_Stm32Message_body_rfid_scanned_MSGTYPE smart_lock_RfidScannedEvent
 #define smart_lock_Stm32Message_body_rfid_registration_MSGTYPE smart_lock_RfidRegistrationEvent
 #define smart_lock_Stm32Message_body_face_registration_MSGTYPE smart_lock_FaceRegistrationEvent
@@ -206,6 +218,11 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (body,status_response,body.status_response), 
 X(a, STATIC,   SINGULAR, STRING,   pin,               1)
 #define smart_lock_PINInputEvent_CALLBACK NULL
 #define smart_lock_PINInputEvent_DEFAULT NULL
+
+#define smart_lock_PINUpdatedEvent_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, STRING,   pin,               1)
+#define smart_lock_PINUpdatedEvent_CALLBACK NULL
+#define smart_lock_PINUpdatedEvent_DEFAULT NULL
 
 #define smart_lock_RfidScannedEvent_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, BYTES,    uid,               1)
@@ -254,6 +271,7 @@ extern const pb_msgdesc_t smart_lock_SmartLockPacket_msg;
 extern const pb_msgdesc_t smart_lock_Stm32Message_msg;
 extern const pb_msgdesc_t smart_lock_PiMessage_msg;
 extern const pb_msgdesc_t smart_lock_PINInputEvent_msg;
+extern const pb_msgdesc_t smart_lock_PINUpdatedEvent_msg;
 extern const pb_msgdesc_t smart_lock_RfidScannedEvent_msg;
 extern const pb_msgdesc_t smart_lock_RfidRegistrationEvent_msg;
 extern const pb_msgdesc_t smart_lock_FaceRegistrationEvent_msg;
@@ -268,6 +286,7 @@ extern const pb_msgdesc_t smart_lock_StatusResponse_msg;
 #define smart_lock_Stm32Message_fields &smart_lock_Stm32Message_msg
 #define smart_lock_PiMessage_fields &smart_lock_PiMessage_msg
 #define smart_lock_PINInputEvent_fields &smart_lock_PINInputEvent_msg
+#define smart_lock_PINUpdatedEvent_fields &smart_lock_PINUpdatedEvent_msg
 #define smart_lock_RfidScannedEvent_fields &smart_lock_RfidScannedEvent_msg
 #define smart_lock_RfidRegistrationEvent_fields &smart_lock_RfidRegistrationEvent_msg
 #define smart_lock_FaceRegistrationEvent_fields &smart_lock_FaceRegistrationEvent_msg
@@ -283,6 +302,7 @@ extern const pb_msgdesc_t smart_lock_StatusResponse_msg;
 #define smart_lock_FaceRegistrationEvent_size    0
 #define smart_lock_IrTriggeredEvent_size         0
 #define smart_lock_PINInputEvent_size            18
+#define smart_lock_PINUpdatedEvent_size          18
 #define smart_lock_PiMessage_size                69
 #define smart_lock_RfidRegistrationEvent_size    6
 #define smart_lock_RfidScannedEvent_size         6

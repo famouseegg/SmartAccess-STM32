@@ -18,6 +18,9 @@ PB_BIND(smart_lock_PiMessage, smart_lock_PiMessage, AUTO)
 PB_BIND(smart_lock_PINInputEvent, smart_lock_PINInputEvent, AUTO)
 
 
+PB_BIND(smart_lock_PINUpdatedEvent, smart_lock_PINUpdatedEvent, AUTO)
+
+
 PB_BIND(smart_lock_RfidScannedEvent, smart_lock_RfidScannedEvent, AUTO)
 
 

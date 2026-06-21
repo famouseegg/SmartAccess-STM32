@@ -26,6 +26,7 @@ void StartTask_Tx(void* argument);
 void StartTask_Rx(void* argument);
 
 void SendPINEvent(const char* pwd);
+void SendPINUpdatedEvent(const char* new_pwd);
 void SendRfidEvent(const uint8_t* uid_data, uint16_t uid_len);
 void SendRFIDRegistrationEvent(const uint8_t* uid_data, uint16_t uid_len);
 void SendFaceRegistrationEvent(void);
