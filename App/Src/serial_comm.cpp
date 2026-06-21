@@ -20,9 +20,10 @@ extern "C" void SerialTransfer_PutRxByte(uint8_t byte);
 
 extern "C" {
 extern UART_HandleTypeDef huart2;
-extern QueueHandle_t queueRelayOUT;
+extern QueueHandle_t queueRelayIN;
 extern QueueHandle_t queueLed;
 extern QueueHandle_t queueLCD;
+extern QueueHandle_t queueRegistrationControl;
 }
 
 extern "C" void InitSmartLockComms(void) {
@@ -83,8 +84,8 @@ extern "C" void StartTask_Rx(void* argument) {
 
             switch (pi_msg->which_body) {
               case smart_lock_PiMessage_unlock_tag: {
-                uint8_t open = 1;
-                xQueueSend(queueRelayOUT, &open, portMAX_DELAY);
+                bool open = true;
+                xQueueSend(queueRelayIN, &open, portMAX_DELAY);
                 break;
               }
               case smart_lock_PiMessage_control_rgb_led_tag: {
@@ -119,10 +120,11 @@ extern "C" void StartTask_Rx(void* argument) {
                   strcpy(disp.line2, pi_msg->body.status_response.message);
                   led = 'R';
                 }
+                bool registration = false;
+                xQueueSend(queueRegistrationControl, &registration,
+                           portMAX_DELAY);
                 xQueueSend(queueLCD, &disp, portMAX_DELAY);
                 xQueueSend(queueLed, &led, portMAX_DELAY);
-                printf("[Rx] Status Response: %s, %s\r\n", disp.line1,
-                       disp.line2);
                 break;
               }
               default:

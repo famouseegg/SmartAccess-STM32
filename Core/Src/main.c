@@ -72,6 +72,7 @@ QueueHandle_t queueRelayIN;
 QueueHandle_t queueRelayOUT;
 QueueHandle_t queueRFID;
 QueueHandle_t queueRFIDRegistration;
+QueueHandle_t queueRegistrationControl;
 
 extern I2C_HandleTypeDef hi2c1;
 extern UART_HandleTypeDef huart2;
@@ -132,8 +133,10 @@ void taskKeypad(void* pvParm) {
                       GPIO_PIN_RESET);
 
     if (isKeyPressed == 1) {
-      xQueuePeek(queueRelayOUT, &isDoorOpen, 0);
       int len = strlen(key_buffer);
+
+      xQueuePeek(queueRelayOUT, &isDoorOpen, 0);
+      xQueueReceive(queueRegistrationControl, &isRegistration, 0);
 
       if (isRegistration == true) {
         if (key == '*') {
@@ -156,17 +159,19 @@ void taskKeypad(void* pvParm) {
         case 'B':  // 註冊人臉
           if (isDoorOpen == true) {
             SendFaceRegistrationEvent();
-            isRegistration = true;
             snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
                      "Face Registration");
+            isRegistration = true;
+            key_buffer[0] = '\0';
           }
           break;
         case 'C':  // 註冊卡片
           if (isDoorOpen == true) {
             xQueueSend(queueRFIDRegistration, &(bool){true}, 0);
-            isRegistration = true;
             snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
                      "RFID Registration");
+            isRegistration = true;
+            key_buffer[0] = '\0';
           }
           break;
         case 'D':  // 回退輸入
@@ -386,6 +391,7 @@ int main(void) {
   queueRelayIN = xQueueCreate(3, sizeof(bool));
   queueRFID = xQueueCreate(3, sizeof(char));
   queueRFIDRegistration = xQueueCreate(3, sizeof(bool));
+  queueRegistrationControl = xQueueCreate(3, sizeof(bool));
 
   xTaskCreate(taskKeypad, "Keypad", 256, NULL, 3, &handleKeypad);
   xTaskCreate(taskRFID, "RFID", 256, NULL, 3, &handleRFID);

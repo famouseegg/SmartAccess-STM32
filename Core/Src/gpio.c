@@ -100,12 +100,19 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(RC522_IRQ_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LED_G_Pin LED_B_Pin LED_R_Pin RELAY_IN_Pin */
-  GPIO_InitStruct.Pin = LED_G_Pin|LED_B_Pin|LED_R_Pin|RELAY_IN_Pin;
+  /*Configure GPIO pins : LED_G_Pin LED_B_Pin LED_R_Pin */
+  GPIO_InitStruct.Pin = LED_G_Pin|LED_B_Pin|LED_R_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : RELAY_IN_Pin */
+  GPIO_InitStruct.Pin = RELAY_IN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(RELAY_IN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : RELAY_OUT_Pin */
   GPIO_InitStruct.Pin = RELAY_OUT_Pin;
