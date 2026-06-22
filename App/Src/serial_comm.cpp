@@ -131,8 +131,7 @@ extern "C" void StartTask_Rx(void* argument) {
                   xQueueSend(queueLCD, &displayText, portMAX_DELAY);
                 }
                 bool registration = false;
-                xQueueSend(queueRegistrationControl, &registration,
-                           portMAX_DELAY);
+                xQueueOverwrite(queueRegistrationControl, &registration);
                 break;
               }
               default:

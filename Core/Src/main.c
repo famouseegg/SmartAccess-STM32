@@ -137,7 +137,7 @@ void taskKeypad(void* pvParm) {
       int len = strlen(key_buffer);
 
       xQueuePeek(queueRelayOUT, &isDoorOpen, 0);
-      xQueueReceive(queueRegistrationControl, &isRegistration, 0);
+      xQueuePeek(queueRegistrationControl, &isRegistration, 0);
 
       if (isRegistration == true) {
         if (key == '*') {
@@ -179,7 +179,7 @@ void taskKeypad(void* pvParm) {
           break;
         case 'C':  // 註冊卡片
           if (isDoorOpen == true) {
-            xQueueSend(queueRFIDRegistration, &(bool){true}, 0);
+            xQueueOverwrite(queueRFIDRegistration, &(bool){true});
             snprintf(displayText.line1, sizeof(displayText.line1), "%s",
                      "RFID Registration");
             isRegistration = true;
@@ -219,7 +219,7 @@ void taskRFID(void* pvParm) {
   bool isRegistration = false;
 
   while (1) {
-    xQueueReceive(queueRFIDRegistration, &isRegistration, 0);
+    xQueuePeek(queueRFIDRegistration, &isRegistration, 0);
     status = MFRC522_Request(PICC_REQIDL, uidBytes);
     if (status == MI_OK) {
       status = MFRC522_Anticoll(uidBytes);
@@ -341,6 +341,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
                                    &xHigherPriorityTaskWoken);
       }
       break;
+    case SW3_Pin:  // 手動觸發紅外線(測試)
+      if (HAL_GPIO_ReadPin(SW3_GPIO_Port, SW3_Pin) == GPIO_PIN_RESET) {
+        SendSmartLockSignalFromISR(SIGNAL_IR_TRIGGERED,
+                                   &xHigherPriorityTaskWoken);
+      }
+      break;
     case RELAY_OUT_Pin:  // 門狀態
       if (HAL_GPIO_ReadPin(RELAY_OUT_GPIO_Port, RELAY_OUT_Pin) ==
           GPIO_PIN_SET) {
@@ -402,8 +408,8 @@ int main(void) {
   queueRelayOUT = xQueueCreate(1, sizeof(bool));
   queueRelayIN = xQueueCreate(3, sizeof(bool));
   queueRFID = xQueueCreate(3, sizeof(char));
-  queueRFIDRegistration = xQueueCreate(3, sizeof(bool));
-  queueRegistrationControl = xQueueCreate(3, sizeof(bool));
+  queueRFIDRegistration = xQueueCreate(1, sizeof(bool));
+  queueRegistrationControl = xQueueCreate(1, sizeof(bool));
 
   xTaskCreate(taskKeypad, "Keypad", 256, NULL, 3, &handleKeypad);
   xTaskCreate(taskRFID, "RFID", 256, NULL, 3, &handleRFID);
