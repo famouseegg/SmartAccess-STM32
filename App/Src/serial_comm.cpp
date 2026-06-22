@@ -85,7 +85,9 @@ extern "C" void StartTask_Rx(void* argument) {
             switch (pi_msg->which_body) {
               case smart_lock_PiMessage_unlock_tag: {
                 bool open = true;
+                char led_color = 'G';
                 xQueueSend(queueRelayIN, &open, portMAX_DELAY);
+                xQueueSend(queueLed, &led_color, portMAX_DELAY);
                 break;
               }
               case smart_lock_PiMessage_control_rgb_led_tag: {
@@ -108,23 +110,29 @@ extern "C" void StartTask_Rx(void* argument) {
                 break;
               }
               case smart_lock_PiMessage_status_response_tag: {
-                LcdDisplay_t disp;
+                LcdDisplay_t displayText;
                 char led;
                 if (pi_msg->body.status_response.status ==
                     smart_lock_StatusType_STATUS_TYPE_OK) {
-                  strcpy(disp.line1, "successful");
-                  strcpy(disp.line2, pi_msg->body.status_response.message);
                   led = 'G';
-                } else {
-                  strcpy(disp.line1, "failed");
-                  strcpy(disp.line2, pi_msg->body.status_response.message);
+                  strcpy(displayText.line1, "successful");
+                  strcpy(displayText.line2,
+                         pi_msg->body.status_response.message);
+                  xQueueSend(queueLed, &led, portMAX_DELAY);
+                  xQueueSend(queueLCD, &displayText, portMAX_DELAY);
+
+                } else if (pi_msg->body.status_response.status ==
+                           smart_lock_StatusType_STATUS_TYPE_FAILED) {
                   led = 'R';
+                  strcpy(displayText.line1, "failed");
+                  strcpy(displayText.line2,
+                         pi_msg->body.status_response.message);
+                  xQueueSend(queueLed, &led, portMAX_DELAY);
+                  xQueueSend(queueLCD, &displayText, portMAX_DELAY);
                 }
                 bool registration = false;
                 xQueueSend(queueRegistrationControl, &registration,
                            portMAX_DELAY);
-                xQueueSend(queueLCD, &disp, portMAX_DELAY);
-                xQueueSend(queueLed, &led, portMAX_DELAY);
                 break;
               }
               default:

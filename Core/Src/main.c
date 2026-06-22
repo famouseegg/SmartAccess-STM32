@@ -104,7 +104,7 @@ void taskKeypad(void* pvParm) {
                     GPIO_PIN_SET);
 
   while (1) {
-    LcdDisplay_t displaytext;
+    LcdDisplay_t displayText;
     uint8_t isKeyPressed = 0;
     char key = '0';
 
@@ -162,7 +162,7 @@ void taskKeypad(void* pvParm) {
           break;
         case 'A':  // 更新密碼
           if (isDoorOpen == true) {
-            snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
+            snprintf(displayText.line1, sizeof(displayText.line1), "%s",
                      "PIN Update");
             isUpdation = true;
             key_buffer[0] = '\0';
@@ -171,7 +171,7 @@ void taskKeypad(void* pvParm) {
         case 'B':  // 註冊人臉
           if (isDoorOpen == true) {
             SendFaceRegistrationEvent();
-            snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
+            snprintf(displayText.line1, sizeof(displayText.line1), "%s",
                      "Face Registration");
             isRegistration = true;
             key_buffer[0] = '\0';
@@ -180,7 +180,7 @@ void taskKeypad(void* pvParm) {
         case 'C':  // 註冊卡片
           if (isDoorOpen == true) {
             xQueueSend(queueRFIDRegistration, &(bool){true}, 0);
-            snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
+            snprintf(displayText.line1, sizeof(displayText.line1), "%s",
                      "RFID Registration");
             isRegistration = true;
             key_buffer[0] = '\0';
@@ -200,18 +200,18 @@ void taskKeypad(void* pvParm) {
       }
 
       if (!isRegistration && !isUpdation) {
-        snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
+        snprintf(displayText.line1, sizeof(displayText.line1), "%s",
                  "Keypad Input");
       }
-      snprintf(displaytext.line2, sizeof(displaytext.line2), "%s", key_buffer);
-      xQueueSend(queueLCD, &displaytext, portMAX_DELAY);
+      snprintf(displayText.line2, sizeof(displayText.line2), "%s", key_buffer);
+      xQueueSend(queueLCD, &displayText, portMAX_DELAY);
     }
     vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
 
 void taskRFID(void* pvParm) {
-  LcdDisplay_t displaytext;
+  LcdDisplay_t displayText;
   MFRC522_Init();
   uchar status;
   uchar uidBytes[MAX_LEN];
@@ -232,10 +232,10 @@ void taskRFID(void* pvParm) {
         }
         snprintf(rfid, sizeof(rfid), "%02x%02x%02x%02x", uidBytes[0],
                  uidBytes[1], uidBytes[2], uidBytes[3]);
-        snprintf(displaytext.line1, sizeof(displaytext.line1), "%s",
+        snprintf(displayText.line1, sizeof(displayText.line1), "%s",
                  "RFID Card Scanned");
-        snprintf(displaytext.line2, sizeof(displaytext.line2), "%s", rfid);
-        xQueueSend(queueLCD, &displaytext, portMAX_DELAY);
+        snprintf(displayText.line2, sizeof(displayText.line2), "%s", rfid);
+        xQueueSend(queueLCD, &displayText, portMAX_DELAY);
         printf("\r\n[RFID] Card Scanned UID: %s\r\n", rfid);
       }
       MFRC522_Halt();
