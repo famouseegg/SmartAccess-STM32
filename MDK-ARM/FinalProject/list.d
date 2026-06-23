@@ -1,8 +1,5 @@
 finalproject/list.o: ..\Middlewares\Third_Party\FreeRTOS\Source\list.c \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdlib.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\FreeRTOS.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stddef.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdint.h \
   ..\Core\Inc\FreeRTOSConfig.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\projdefs.h \
   ..\Middlewares\Third_Party\FreeRTOS\Source\include\portable.h \

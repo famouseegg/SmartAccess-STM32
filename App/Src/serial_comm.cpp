@@ -23,6 +23,7 @@ extern UART_HandleTypeDef huart2;
 extern QueueHandle_t queueRelayIN;
 extern QueueHandle_t queueLed;
 extern QueueHandle_t queueLCD;
+extern QueueHandle_t queueRFIDRegistration;
 extern QueueHandle_t queueRegistrationControl;
 }
 
@@ -131,6 +132,7 @@ extern "C" void StartTask_Rx(void* argument) {
                   xQueueSend(queueLCD, &displayText, portMAX_DELAY);
                 }
                 bool registration = false;
+                xQueueOverwrite(queueRFIDRegistration, &registration);
                 xQueueOverwrite(queueRegistrationControl, &registration);
                 break;
               }
@@ -237,10 +239,7 @@ extern "C" void SendSmartLockSignalFromISR(
 
 extern "C" void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart) {
   if (huart->Instance == USART2) {
-    // 把硬體剛收到的這一個 byte 塞進環形緩衝區
     SerialTransfer_PutRxByte(g_uart_rx_byte);
-
-    // 再次呼叫接收中斷，準備接收下一個字元
     HAL_UART_Receive_IT(huart, &g_uart_rx_byte, 1);
   }
 }

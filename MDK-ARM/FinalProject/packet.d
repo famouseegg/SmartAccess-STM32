@@ -1,9 +1,6 @@
 finalproject/packet.o: ..\ThirdParty\serialtransfer\Packet.cpp \
   ..\ThirdParty\serialtransfer\Packet.h \
   ..\ThirdParty\serialtransfer\PacketCRC.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\libcxx\stdio.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\libcxx\__config \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdio.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal.h \
   ..\Core\Inc\stm32f4xx_hal_conf.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rcc.h \
@@ -11,16 +8,8 @@ finalproject/packet.o: ..\ThirdParty\serialtransfer\Packet.cpp \
   ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f4xx.h \
   ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\stm32f429xx.h \
   ..\Drivers\CMSIS\Include\core_cm4.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\libcxx\stdint.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stdint.h \
-  ..\Drivers\CMSIS\Include\cmsis_version.h \
-  ..\Drivers\CMSIS\Include\cmsis_compiler.h \
-  ..\Drivers\CMSIS\Include\cmsis_armclang.h \
-  ..\Drivers\CMSIS\Include\mpu_armv7.h \
   ..\Drivers\CMSIS\Device\ST\STM32F4xx\Include\system_stm32f4xx.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\Legacy\stm32_hal_legacy.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\libcxx\stddef.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\stddef.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_rcc_ex.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_gpio.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_gpio_ex.h \
@@ -36,6 +25,4 @@ finalproject/packet.o: ..\ThirdParty\serialtransfer\Packet.cpp \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pwr.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_pwr_ex.h \
   ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_spi.h \
-  ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_uart.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\libcxx\string.h \
-  E:\Keil\ 5\ARM\ARMCLANG\Bin\..\include\string.h
+  ..\Drivers\STM32F4xx_HAL_Driver\Inc\stm32f4xx_hal_uart.h
